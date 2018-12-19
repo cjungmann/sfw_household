@@ -1,0 +1,275 @@
+#!/bin/bash
+
+declare DEF_HOSTNAME=sfw_households
+declare DEF_DBASENAME=SFW_Households
+
+clear_screen() { printf "\033c"; }
+
+# https://en.wikipedia.org/wiki/Command-line_interface#Command_description_syntax
+# <...> required elements
+# [...] optional elements
+# | demarks equivalent alternatives
+show_usage()
+{
+    echo >&2
+    echo "Usage (must run as 'root'):" >&2
+    echo "$ sudo ./setup <install | uninstall> [site name] [database_name]" >&2
+    echo >&2
+    echo "Example:" >&2
+    echo "    The following command will perform serveral steps to prepare" >&2
+    echo "    the web site, including creating a database and adding system and" >&2
+    echo "    application procedures, installing the site directory, creating" >&2
+    echo "    and enabling an Apache site, and updating the /etc/hosts file for" >&2
+    echo "    running on localhost." >&2
+    echo >&2
+    echo "    The example below will create an Apache web host named" >&2
+    echo "    'test_demo' (default would be ${DEF_HOSTNAME}) and an MySQL" >&2
+    echo "    database named 'TestDemo' (default would be ${DEF_DBASENAME})." >&2
+    echo >&2
+    echo "$ sudo ./setup install test_demo TestDemo" >&2
+    echo >&2
+}
+
+declare -i CMD_ARGC=$#
+
+has_minimum_args() { [ $CMD_ARGC -gt 0 ]; }
+running_as_root() { [ "${USER}" = "root" ]; }
+
+# Start screen output HERE:
+clear_screen
+
+if ! has_minimum_args; then
+    echo "At least one parameter ('install' or 'uninstall') is required." >&2
+    show_usage
+    exit 1
+elif ! running_as_root; then
+    echo "User must run as 'root' to execute scripted commands." >&2
+    show_usage
+    exit 1
+fi
+
+# Name the parameters:
+ACTION="${1}"
+HOSTNAME="${2:-$DEF_HOSTNAME}"
+DBASENAME="${3:-$DEF_DBASENAME}"
+
+database_exists()
+{
+    declare dbase_name="${1}"
+    local -a query=(
+        "SELECT COUNT(*)"
+        "FROM information_schema.SCHEMATA"
+        "WHERE SCHEMA_NAME='${dbase_name}'"
+    )
+
+    local -i count
+    count=$( mysql -BN -e "${query[*]}" )
+
+    [ $? -eq 0 -a $count -eq 1 ]
+}
+
+database_procedure_exists()
+{
+    local dbase_name="${1}"
+    local proc_name="${2}"
+    local -i count
+    local -a query=(
+        "SELECT COUNT(*)"
+        "FROM information_schema.ROUTINES"
+        "WHERE ROUTINE_SCHEMA='${dbase_name}'"
+        "AND ROUTINE_NAME='${proc_name}'"
+    )
+
+    count=$( mysql -BN -e "${query[*]}" )
+
+    [ $? -eq 0 -a $count -gt 0 ]
+}
+
+
+###### /etc/hosts editing section ######
+declare etc_hosts_path="/etc/hosts"
+# declare etc_hosts_path="fake_hosts"
+
+declare local_address=$( grep -v  '^\s*#' "${etc_hosts_path}" | grep 'localhost$' - | cut -f 1 - )
+
+
+hostname_exists()
+{
+    local hostname="${1}"
+    local target="^${local_address}\s\+${hostname}\$"
+    local entry=$( grep "${target}" "${etc_hosts_path}" )
+    [ -n "${entry}" ]
+}
+
+# The only parameter needed is the hostname.  The current
+# ACTION setting will be retrieved from the global variable.
+modify_etc_hosts()
+{
+    local hostname="${1}"
+    local newfile
+    local -i response=-1
+
+    if [ $ACTION = "install" ]; then
+        if hostname_exists "${hostname}"; then
+            echo "Hostname '${hostname}' already exists.  No changes made." >&2
+        else
+            newfile=$( echo "${local_address}	${hostname}" | cat "${etc_hosts_path}" - )
+        fi
+    elif [ $ACTION = "uninstall" ]; then
+        if hostname_exists "${hostname}"; then
+            newfile=$( sed "/${local_address}\s\+${hostname}/d" "${etc_hosts_path}" )
+        else
+            echo "Hostname '${hostname}' not found in hosts. No changes made." >&2
+        fi
+    fi
+
+    if [ -n "$newfile" ]; then
+        clear_screen
+
+        echo "### File differences follow ###"
+        echo "${newfile}" | diff -y "${etc_hosts_path}" -
+        echo
+        echo "### End of file differences output ###"
+        echo
+        echo "The existing file is on the left, the proposed changes on the right."
+        while [ $response -ne 0 ] && [ $response -ne 1 ]; do
+            read -p "Save changes to '${etc_hosts_path}' (1=yes, 0=no) " response
+        done
+
+        if [ $response -eq 1 ]; then
+            echo "Writing new text to '${etc_hosts_path}'" >&2
+            echo "${newfile}" > "${etc_hosts_path}"
+        else
+            echo "Left '${etc_hosts_path}' unchanged." >&2
+        fi
+    fi
+}
+
+install_tweaked_default_xsl()
+{
+    local -a cmd=(
+        -e "s^\*\*Default SchemaFW \(Title\|Header\)\*\*^SFW Households Demo^g"
+        /usr/local/lib/schemafw/default.xsl
+    )
+    sed "${cmd[@]}" > ../site/default.xsl
+}
+
+get_installed_database_name()
+{
+    local token='$database'
+
+    # Use grep option -h to suppress file name output if multiple file matches:
+    local IFS=$'\n'
+    local -a lines=( $( grep -h "${token}" ../site/*.srm ) )
+    local dbase="${lines[0]}"
+
+    if [[ "${dbase}" =~ "${token}"[[:space:]]*:[[:space:]]*(.*) ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return 0
+    else
+        echo "Failed to find an existing database name." >&2
+        return 1
+    fi
+}
+
+unlink_installed_files()
+{
+    rm ../site/*.srm
+    rm ../site/default.xsl
+    unlink ../site/includes
+
+    rm ../setup/*.sql
+}
+
+install()
+{
+    ./apache_set install "${HOSTNAME}"
+    if [ $? -ne 0 ]; then
+        return 1;
+    fi
+    
+    # Copy files and links to the site directory
+    cd ../site
+    # Loading SchemaFW file and directory
+    ln -s /usr/local/lib/schemafw/web_includes includes
+    install_tweaked_default_xsl
+
+    cp -s ../custom/*.srm .
+
+    # Return to the setup directory
+    cd -
+
+    # Prepare setup files and install site
+    echo "\$database : ${DBASENAME}" > ../site/common.srm
+    cp -s ../custom/*.sql .
+
+    ./load_scripts "${DBASENAME}"
+
+}
+
+uninstall()
+{
+    ./apache_set uninstall
+    local -i rval=$?
+    if [ $rval -ne 0 ]; then
+        echo "apache_set uninstall failed? Terminating action." >&2
+        return 1;
+    fi
+
+    local dbase_name
+    local -i response
+
+    dbase_name=$( get_installed_database_name )
+    if [ $? -eq 0 ]; then
+        if database_exists "${dbase_name}"; then
+            local proc_name="App_Household_List"
+            if database_procedure_exists "${dbase_name}" "${proc_name}"; then
+                read -p "Delete database '${dbase_name}' (1 for yes, 0 for no)? " response
+                if [ $? -eq 0 -a $response -eq 1 ]; then
+                    mysql -e "DROP DATABASE ${dbase_name}"
+                    echo "Dropped database '${dbase_name}'" >&2
+                else
+                    echo "Databse '${dbase_name}' was left in place." >&2
+                fi
+            else
+                echo -n "Database '${dbase_name}' is missing identifying procedure"  >&2
+                echo "'${proc_name}'.  Aborting suspicious database delete." >&2
+            fi
+        else
+            echo "Database '${dbase_name}' no longer exists." >&2
+        fi
+    else
+        echo "Cannot identify database name, so no database was deleted." >&2
+    fi
+
+    unlink_installed_files
+}
+
+
+if [ $ACTION = "install" ]; then
+    install
+    if [ $? -eq 0 ]; then
+        modify_etc_hosts "${HOSTNAME}"
+        chromium-browser --no-sandbox --new-window "http://${HOSTNAME}"
+        exit 0
+    fi
+elif [ $ACTION = "uninstall" ]; then
+    if [ -s "installed_site.txt" ]; then
+        # save hostname before apache_set removes it:
+        declare hostname=$( cat "installed_site.txt" )
+        echo "About to uninstall host '${hostname}'" >&2
+
+        uninstall 
+        if [ $? -eq 0 ]; then
+            modify_etc_hosts "${hostname}"
+            exit 0
+        fi
+    else
+        echo "Unable to establish the hostname: no changes made." >&2
+    fi
+else
+    echo "Your parameter, '${1}' is not either 'install' or 'uninstall'" >&2
+    show_usage
+fi
+
+exit 1
