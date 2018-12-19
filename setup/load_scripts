@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dbase="${1:-SFW_Families}"
+dbase="${1:-SFW_Households}"
 
 # -r (raw) to omit tabular ouput
 # -N (--skip-column-names)
