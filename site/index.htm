@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>SFW Households Demo</title>
+    <meta http-equiv="content-type" content="text/html;" />
+    <meta name="keywords" content="schemafw html_template" />
+    <link rel="stylesheet" type="text/css" href="includes/schemafw.css" />
+    <style type="text/css">
+      html { font-size: 14pt; background-color:#6699FF; }
+      body { width: 35em; margin:2em auto; padding:0 2em 1em 2em; background-color:#FFFFFF; }
+    </style>
+  </head>
+  <body>
+    <div id="SFW_Header">
+      <h1>SFW Households Demo</h1>
+    </div>
+    <div id="SFW_Content">
+      <p>
+        This website demonstrates several implementations of a
+        many-to-one interaction.  The each list item below contains a
+        link to an implementation along with a description of the
+        progamming pattern used therein.  A more complete description,
+        along with installation instructions, are available as README.md
+        files the links to which can be found in the main README.md on
+        the project's <a href="https://www.github.com/cjungmann/sfw_household.git">
+          main GitHub page</a>.
+      </p>
+      <ul>
+        <li>
+          <a href="HouseholdType1.srm">Type 1</a>
+          This pattern is the simplest, using fundamental built-in form-
+          and table-based interactions.  There are a few differences
+          between a basic form/table setup:
+          <ol>
+            <li>
+              The MySQL person <em>List</em> procedure has a household
+              filtering parameter in addition to the standard individual
+              filtering parameter.
+            </li>
+            <li>
+              The SRM household <em>list</em> mode changes the
+              <em>on_line_click</em> URL to include the household record
+              ID (to apply to the household filtering parameter) and
+              household name (to make it available as a title for the
+              table view).
+            </li>
+            <li>
+              The SRM person <em>list</em> mode uses the household name
+              off of the URL to put the household name in the page title
+              to provide context.
+            </li>
+          </ol>
+        </li>
+      </ul>
+    </div>
+  </body>
+</html>
