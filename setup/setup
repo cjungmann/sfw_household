@@ -13,7 +13,17 @@ show_usage()
 {
     echo >&2
     echo "Usage (must run as 'root'):" >&2
-    echo "$ sudo ./setup <install | uninstall> [site name] [database_name]" >&2
+    echo "$ sudo ./setup <install | uninstall | update> [site name] [database_name]" >&2
+    echo >&2
+    echo "Action options install and uninstall are self-explanatory." >&2
+    echo >&2
+    echo "Action option 'uninstall' ignores optional parameters site name" >&2
+    echo "   and database name.  It finds breadcrumbs in the project that" >&2
+    echo "   identify the already installed site and database values." >&2
+    echo >&2 
+   echo "Action option update deletes and reloads SQL and SRM file to" >&2
+    echo "   the setup and site directories, respectively, then reloads the" >&2
+    echo "   MySQL scripts." >&2
     echo >&2
     echo "Example:" >&2
     echo "    The following command will perform serveral steps to prepare" >&2
@@ -39,11 +49,11 @@ running_as_root() { [ "${USER}" = "root" ]; }
 clear_screen
 
 if ! has_minimum_args; then
-    echo "At least one parameter ('install' or 'uninstall') is required." >&2
+    echo "At least one parameter ('install', 'uninstall', or 'update') is required." >&2
     show_usage
     exit 1
-elif ! running_as_root; then
-    echo "User must run as 'root' to execute scripted commands." >&2
+elif ! running_as_root && [ "$1" = 'install' -o "$1" = 'uninstall' ];  then
+    echo "User must run as 'root' to execute 'install' and 'uninstall' actions." >&2
     show_usage
     exit 1
 fi
@@ -172,6 +182,25 @@ get_installed_database_name()
     fi
 }
 
+create_file_links()
+{
+    local SAVED_DIR="${PWD}"
+    local -a files_to_delete
+
+    cd ../site
+
+    # Remove linked regular (SRM) files:
+    files_to_delete=( $( find . -type l -xtype f ) )
+    echo "Deleting ${files_to_delete[*]}" >&2
+    rm "${files_to_delete[@]}"
+    cp -s ../custom/*.srm .
+
+    cd ../setup
+    rm *.sql
+    cp -s ../custom/*.sql .
+    cd "${SAVED_DIR}"
+}
+
 unlink_installed_files()
 {
     rm ../site/*.srm
@@ -190,18 +219,16 @@ install()
     
     # Copy files and links to the site directory
     cd ../site
-    # Loading SchemaFW file and directory
     ln -s /usr/local/lib/schemafw/web_includes includes
     install_tweaked_default_xsl
-
-    cp -s ../custom/*.srm .
 
     # Return to the setup directory
     cd -
 
     # Prepare setup files and install site
     echo "\$database : ${DBASENAME}" > ../site/common.srm
-    cp -s ../custom/*.sql .
+
+    create_file_links
 
     ./load_scripts "${DBASENAME}"
 
@@ -245,6 +272,16 @@ uninstall()
     unlink_installed_files
 }
 
+update_mysql_and_site()
+{
+    local dbase_name
+    dbase_name=$( get_installed_database_name )
+    if [ $? -eq 0 ]; then
+        create_file_links
+        ./load_scripts "${dbase_name}"
+    fi
+}
+
 
 if [ $ACTION = "install" ]; then
     install
@@ -267,6 +304,8 @@ elif [ $ACTION = "uninstall" ]; then
     else
         echo "Unable to establish the hostname: no changes made." >&2
     fi
+elif [ $ACTION = "update" ]; then
+    update_mysql_and_site
 else
     echo "Your parameter, '${1}' is not either 'install' or 'uninstall'" >&2
     show_usage
