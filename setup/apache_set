@@ -39,7 +39,7 @@ fi
 # Identify parameter values with names:
 declare ACTION="$1"
 declare site_name="${2:-sfw_families}"
-declare site_index="Household.srm"
+declare site_index="index.htm"
 
 # Manage previous setup breadcrumbs for uninstall:
 declare status_target="./installed_site.txt"
