@@ -1,0 +1,77 @@
+$database       : SFW_Households
+$xml-stylesheet : default.xsl
+$default-mode   : list
+$include        : common.srm
+
+list
+   type          : table
+   procedure     : App_Household_Type1_List
+   title         : Household Management
+   autoload_tag  : page
+   on_line_click : ?edit&id={!id}&name={!name}
+   button
+      type  : add
+      label : Create Household
+      task  : ?add
+   result : 1
+      schema
+         field : id
+            readOnly : true
+            hidden   : true
+   result : 2
+      type : variables
+
+add
+   type         : form-new
+   schema-proc  : App_Household_Type1_Add
+   form-action  : ?add_submit
+   title        : Add Household
+   autoload_tag : dialog
+   schema
+
+add_submit
+   type      : form-submit
+   procedure : App_Household_Type1_Add
+   result : 1
+      type : update
+
+read
+   type      : form-view
+   procedure : App_Household_Type1_Read
+   result : 1
+      schema
+         field : id
+            readOnly : true
+            hidden   : true
+
+edit
+   type         : form-edit
+   schema-proc  : App_Household_Type1_Update
+   procedure    : App_Household_Type1_Value
+   title        : Edit Household
+   form-action  : ?edit_submit
+   autoload_tag : dialog
+   schema
+      button
+         type    : jump
+         label   : Manage People
+         # Note that URL argument names must match procedure parameter names:
+         task    : PersonType1.srm?list&id_household={@id}&name={@name}
+      button
+         type    : delete
+         label   : Delete
+         confirm : Delete
+         task    : ?delete&id={@id}
+      field : id
+         readOnly : true
+         hidden   : true
+
+edit_submit
+   type      : form-submit
+   procedure : App_Household_Type1_Update
+   result
+      type : update
+
+delete
+   type      : delete
+   procedure : App_Household_Type1_Delete

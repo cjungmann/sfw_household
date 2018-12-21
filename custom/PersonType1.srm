@@ -1,0 +1,121 @@
+$database       : SFW_Households
+$xml-stylesheet : default.xsl
+$default-mode   : list
+$include        : common.srm
+
+list
+   type          : table
+   procedure     : App_Person_Type1_List
+   autoload_tag  : page
+
+   # Added this to save query string to variables result
+   qstring       : reflect
+   # Then changed these two lines:
+   # title         : Person Management
+   # on_line_click : ?edit&id={!id}
+   # to these two, using the qstring variables
+   title         : {$name} Household Members
+   # Note how we match the id_household parameter of the _Read procedure
+   on_line_click : ?edit&id={!id}&id_household={$id_household}
+   button
+      type  : add
+      label : Create Person
+      # Changed this
+      # task  : ?add
+      # to this, passing qstring values for display purposes on add dialog
+      task  : ?add&hh_id={$id_household}&hh_name={$name}
+   result : 1
+      schema
+         field : id
+            readOnly : true
+            hidden   : true
+         field : fname
+            label : First Name
+         field : lname
+            label : Last Name
+
+add
+   type         : form-new
+   schema-proc  : App_Person_Type1_Add
+   form-action  : ?add_submit
+   # make query string variables result:
+   qstring      : reflect
+   # Changed this
+   # title        : Add Person
+   # to this, using context hints to title from query string
+   title        : Add Member to {$hh_name} Household
+   autoload_tag : dialog
+   schema
+      field : id_household
+         # Adding default value:
+         value    : {$hh_id}
+         # Hide value, not necessary for user to see
+         readOnly : true
+         hidden   : true
+      field : fname
+         label : First Name
+      field : lname
+         label : Last Name
+         # Adding default value from qstring
+         value : {$hh_name}
+
+add_submit
+   type      : form-submit
+   procedure : App_Person_Type1_Add
+   result : 1
+      type : update
+
+read
+   type      : form-view
+   procedure : App_Person_Type1_Read
+   result : 1
+      schema
+         field : id
+            readOnly : true
+            hidden   : true
+
+# There are many changes from the default described here at top:
+# Since the id_household field was not selected in the _Value
+# procedure, we will apply the value from the query string
+# instead.  That involves changing references from {@id_household}
+# to {$id_household}.  Other context references (fname, id) come
+# from the data returned by the _Value procedure.
+edit
+   type         : form-edit
+   schema-proc  : App_Person_Type1_Update
+   procedure    : App_Person_Type1_Value
+   title        : Edit Person
+   qstring      : reflect
+   form-action  : ?edit_submit&id_household={$id_household}
+   autoload_tag : dialog
+   schema
+      button
+         type    : delete
+         # To aid the end-user, change these two from
+         # label   : Delete
+         # confirm : Delete '{@id_household}'
+         # to
+         label   : Delete {@fname}
+         confirm : Delete {@fname}
+         task    : ?delete&id_household={$id_household}&id={@id}
+      field : id
+         readOnly : true
+         hidden   : true
+      field : fname
+         label : First Name
+      field : lname
+         label : Last Name
+      field : c_id_household
+         readOnly : true
+         hidden   : true
+         value    : {$id_household}
+
+edit_submit
+   type      : form-submit
+   procedure : App_Person_Type1_Update
+   result
+      type : update
+
+delete
+   type      : delete
+   procedure : App_Person_Type1_Delete
