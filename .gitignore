@@ -1,2 +1,7 @@
 setup/*.sql
 setup/installed_site.txt
+site/House*.srm
+site/Person*.srm
+site/common.srm
+site/default.xsl
+site/includes
