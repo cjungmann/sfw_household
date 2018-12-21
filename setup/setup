@@ -287,7 +287,6 @@ if [ $ACTION = "install" ]; then
     install
     if [ $? -eq 0 ]; then
         modify_etc_hosts "${HOSTNAME}"
-        chromium-browser --no-sandbox --new-window "http://${HOSTNAME}"
         exit 0
     fi
 elif [ $ACTION = "uninstall" ]; then
