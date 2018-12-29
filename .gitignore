@@ -1,3 +1,8 @@
+custom/Person.s*
+custom/Household.s*
+custom/Person_ISOTable.sql
+generated/Person.s*
+generated/Household.s*
 setup/*.sql
 setup/installed_site.txt
 site/House*.srm
