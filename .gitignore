@@ -10,3 +10,6 @@ site/Person*.srm
 site/common.srm
 site/default.xsl
 site/includes
+site/edit.xml
+site/installed_includes
+
