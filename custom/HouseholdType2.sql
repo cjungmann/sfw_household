@@ -2,6 +2,20 @@ USE SFW_Households;
 DELIMITER $$
 
 
+-- -----------------------------------------------------
+-- For the 'add' response mode, the setup procedure
+-- creates the 'members' result to store new members
+-- as they are added and to provide the schema for the
+-- isotable input.
+-- -----------------------------------------------------
+DROP PROCEDURE IF EXISTS App_HouseholdType2_Add_Setup $$
+CREATE PROCEDURE App_HouseholdType2_Add_Setup()
+BEGIN
+   SELECT id, fname, lname
+     FROM Person
+    WHERE 1 = 0;
+END $$
+
 -- -------------------------------------------------------
 -- Customization: additional procedure to collect a household's
 -- members.
@@ -9,7 +23,7 @@ DELIMITER $$
 DROP PROCEDURE IF EXISTS App_HouseholdType2_Get_Members $$
 CREATE PROCEDURE App_HouseholdType2_Get_Members(id INT UNSIGNED)
 BEGIN
-   SELECT p.id, p.id_household, p.fname, p.lname
+   SELECT p.id, p.fname, p.lname
      FROM Person p
     WHERE p.id_household = id;
 END $$
@@ -25,7 +39,28 @@ BEGIN
    CALL App_Person_isoTable_Create_Temp_Table();
    CALL App_Person_isoTable_Fill_Temp_Table(members);
 
-   -- DROP TABLE Buffer_Table_Person;
+   -- Remove members not in submitted members list,
+   DELETE p
+     FROM Person p LEFT JOIN Buffer_Table_Person b
+          ON p.id = b.id
+    WHERE p.id_household = id
+      AND b.id IS NULL;
+
+   -- update values of members that do exist,
+   UPDATE Person p
+          INNER JOIN Buffer_Table_Person b
+          ON p.id = b.id
+      SET p.fname = b.fname,
+          p.lname = b.lname
+    WHERE p.id_household = id;
+
+    -- then, finally, add members without ID value (new members):
+    INSERT INTO Person (id_household, fname, lname)
+    SELECT id, b.fname, b.lname
+      FROM Buffer_Table_Person b
+     WHERE b.id IS NULL;
+
+   DROP TABLE IF EXISTS Buffer_Table_Person;
 END $$
 
 -- ------------------------------------------------
@@ -59,7 +94,9 @@ BEGIN
       CALL App_HouseholdType2_List(newid);
 
       -- new call:
-      CALL App_HouseholdType2_Update_Members(id,members);
+      IF LENGTH(members) > 0 THEN
+         CALL App_HouseholdType2_Update_Members(newid,members);
+      END IF;
    END IF;
 END  $$
 
@@ -107,10 +144,8 @@ BEGIN
 
    -- new call.  Call first so _List accesses changed info:
    CALL App_HouseholdType2_Update_Members(id,members);
-   CALL App_HouseholdType2_List(id);
 
-   SELECT * FROM Buffer_Table_Person;
-   DROP TABLE IF EXISTS Buffer_Table_Person;
+   CALL App_HouseholdType2_List(id);
 END $$
 
 
