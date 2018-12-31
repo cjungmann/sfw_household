@@ -168,7 +168,7 @@ create_extra_sql()
 {
     local pwd="${PWD}"
     cd ../custom
-    gensfw_isotable_procs "${DBASENAME}" Person > Person_ISOTable.sql
+    gensfw_isotable_procs "${DBASENAME}" Person -id_household > Person_ISOTable.sql
     cd "${pwd}"
 }
 
@@ -285,6 +285,7 @@ uninstall()
 update_mysql_and_site()
 {
     local dbase_name
+    echo "Getting installed database name" >&2
     dbase_name=$( get_installed_database_name )
     if [ $? -eq 0 ]; then
         create_extra_sql
