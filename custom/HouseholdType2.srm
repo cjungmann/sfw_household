@@ -25,6 +25,8 @@ list
 
 add
    type         : form-new
+   # Need a setup procedure to make the members result:
+   procedure    : App_HouseholdType2_Add_Setup
    schema-proc  : App_HouseholdType2_Add
    form-action  : ?add_submit
    title        : Add Household
@@ -32,6 +34,21 @@ add
    schema
       field : name
          label : Household Name
+      field : members
+         label : Members
+         # Customize the members input field
+         type  : isotable
+         result: members
+   result
+      name  : members
+      schema
+         field : id
+            hidden : true
+         field : fname
+            label : First Name
+         field : lname
+            label : Last Name
+            value : {@name}
 
 add_submit
    type      : form-submit
@@ -77,8 +94,6 @@ edit
       schema
          field : id
             hidden : true
-         field : id_household
-            hidden : true
          field : fname
             label : First Name
          field : lname
@@ -91,8 +106,6 @@ edit_submit
    author    : Chuck Jungmann
    result
       type : update
-   result
-      name : temptable
 
 delete
    type      : delete
