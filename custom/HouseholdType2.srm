@@ -42,8 +42,10 @@ add
    result
       name  : members
       schema
+         form-action : ^local
          field : id
             hidden : true
+            value : {@id}
          field : fname
             label : First Name
          field : lname
@@ -74,6 +76,7 @@ edit
    title        : Edit Household
    form-action  : ?edit_submit
    autoload_tag : dialog
+   # This schema dictates the household dialog
    schema
       button
          type    : delete
@@ -83,15 +86,19 @@ edit
       field : id
          readOnly : true
          hidden   : true
+         value    : {@id}
       field : name
          label : Household Name
+         value : {@name}
       field : members
          label : Members
          type  : isotable
          result: members
    result : 2
       name  : members
+      # This schema dictates the person-editing form:
       schema
+         form-action : ^local
          field : id
             hidden : true
          field : fname
