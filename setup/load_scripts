@@ -20,6 +20,11 @@ if [ $is_installed -eq 0 ]; then
     declare swallow=$( mysql -f "${dbase}" < /usr/local/lib/SchemaServer/install/sys_procs.sql )
 fi
 
+echo Create links to custom files:
+cp -fs ../custom/*.sql .
+echo Rename so script with prerequisite procedures loads first.
+mv Person_ISOTable.sql 1_Person_ISOTable.sql
+
 mysql "$dbase" < tables.sql
 
 declare -a scripts=( $( ls *.sql ) )
