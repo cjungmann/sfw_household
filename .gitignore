@@ -1,6 +1,5 @@
 custom/Person.s*
 custom/Household.s*
-custom/Person_ISOTable.sql
 generated/Person.s*
 generated/Household.s*
 setup/*.sql
