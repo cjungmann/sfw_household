@@ -3,6 +3,29 @@ $xml-stylesheet : default.xsl
 $default-mode   : list
 $include        : common.srm
 
+$shared : member_schema
+   schema : member
+      form-action : ^local
+      button
+         type    : delete
+         label   : Delete Member
+         confirm : Delete Member?
+         iso_del : true
+      field : id
+         hidden : true
+      field : fname
+         label : First Name
+      field : lname
+         label : Last Name
+         value : {@name}
+
+
+add_submit
+   type      : form-submit
+   procedure : App_HouseholdType2_Add
+   result : 1
+      type : update
+
 list
    type          : table
    procedure     : App_HouseholdType2_List
@@ -40,17 +63,8 @@ add
          type  : isotable
          result: members
    result
-      name  : members
-      schema
-         form-action : ^local
-         field : id
-            hidden : true
-            value : {@id}
-         field : fname
-            label : First Name
-         field : lname
-            label : Last Name
-            value : {@name}
+      name : members
+      siblings : $member_schema
 
 add_submit
    type      : form-submit
@@ -69,6 +83,14 @@ read
          field : name
             label : Household Name
 
+consider
+   type         : form-consider
+   procedure    : App_HouseholdType2_Value
+   schema
+      button
+         type : consider
+         label : Consider
+
 edit
    type         : form-edit
    schema-proc  : App_HouseholdType2_Update
@@ -83,29 +105,26 @@ edit
          label   : Delete
          confirm : Delete
          task    : ?delete&id={@id}
+      button
+         type    : call
+         label   : Change Household Name
+         task    : change_hh_name
       field : id
          readOnly : true
          hidden   : true
          value    : {@id}
       field : name
-         label : Household Name
-         value : {@name}
+         label    : Household Name
+         value    : {@name}
+         readOnly : true
+         ebutton  : true
       field : members
          label : Members
          type  : isotable
          result: members
    result : 2
-      name  : members
-      # This schema dictates the person-editing form:
-      schema
-         form-action : ^local
-         field : id
-            hidden : true
-         field : fname
-            label : First Name
-         field : lname
-            label : Last Name
-            value : {@name}
+      name : members
+      siblings : $member_schema
 
 edit_submit
    type      : form-submit
